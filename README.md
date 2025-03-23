@@ -81,7 +81,7 @@ watch(
 
 Para detectar cambios en la propiedad "stock" de cada producto dentro de un array de productos, hay varias técnicas:
 
-1. **Observar cada elemento individualmente** (método implementado en nuestra solución):
+1. **Observar cada elemento individualmente** (método implementado en mi solución):
 
 ```javascript
 products.forEach((product) => {
