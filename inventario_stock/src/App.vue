@@ -24,7 +24,9 @@
 
     <div class="product-list">
       <h2>Lista de Productos</h2>
-      <table>
+      <p v-if="loading">Cargando productos...</p>
+      <p v-if="error">{{ error }}</p>
+      <table v-if="!loading && !error">
         <thead>
         <tr>
           <th>Nombre</th>
@@ -35,15 +37,15 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-for="(product, index) in products" :key="index" :class="{ 'unavailable': !product.disponible }">
+        <tr v-for="product in products" :key="product.id" :class="{ 'unavailable': !product.disponible }">
           <td>{{ product.nombre }}</td>
           <td>€{{ product.precio.toFixed(2) }}</td>
           <td>{{ product.stock }}</td>
           <td>{{ product.disponible ? 'Sí' : 'No' }}</td>
           <td>
-            <button @click="incrementStock(index)" :disabled="product.stock >= 100">+</button>
-            <button @click="decrementStock(index)" :disabled="product.stock <= 0">-</button>
-            <button @click="removeProduct(index)" class="remove-btn">Eliminar</button>
+            <button @click="incrementStock(product.id)" :disabled="product.stock >= 100">+</button>
+            <button @click="decrementStock(product.id)" :disabled="product.stock <= 0">-</button>
+            <button @click="removeProduct(product.id)" class="remove-btn">Eliminar</button>
           </td>
         </tr>
         </tbody>
@@ -53,14 +55,15 @@
 </template>
 
 <script setup>
-import { reactive, watch } from 'vue';
+import { reactive, ref, onMounted } from 'vue';
 
-// Crear un objeto reactivo para el estado de productos
-const products = reactive([
-  { nombre: 'Asus ROGX', precio: 999.99, stock: 10, disponible: true },
-  { nombre: 'Samsung Galaxy S24', precio: 499.99, stock: 5, disponible: true },
-  { nombre: 'Xiaomi 5G', precio: 79.99, stock: 0, disponible: false }
-]);
+// URL del backend GraphQL
+const GRAPHQL_URL = 'http://localhost:5000/graphql';
+
+// Estado para el manejo de productos
+const products = ref([]);
+const loading = ref(true);
+const error = ref(null);
 
 // Objeto para el nuevo producto
 const newProduct = reactive({
@@ -69,64 +72,183 @@ const newProduct = reactive({
   stock: 0
 });
 
+// Función para realizar consultas GraphQL
+async function fetchGraphQL(query, variables = {}) {
+  try {
+    const response = await fetch(GRAPHQL_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        variables
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.errors) {
+      throw new Error(data.errors[0].message);
+    }
+
+    return data.data;
+  } catch (err) {
+    console.error('Error en la consulta GraphQL:', err);
+    error.value = `Error al comunicarse con el servidor: ${err.message}`;
+    throw err;
+  }
+}
+
+// Cargar productos al iniciar
+async function loadProducts() {
+  loading.value = true;
+  error.value = null;
+
+  try {
+    const query = `
+      query {
+        products {
+          id
+          nombre
+          precio
+          stock
+          disponible
+        }
+      }
+    `;
+
+    const data = await fetchGraphQL(query);
+    products.value = data.products;
+  } catch (err) {
+    console.error('Error al cargar productos:', err);
+    error.value = 'No se pudieron cargar los productos';
+  } finally {
+    loading.value = false;
+  }
+}
+
 // Añadir un nuevo producto
-const addProduct = () => {
+async function addProduct() {
   if (newProduct.name.trim() === '' || newProduct.price <= 0) {
     alert('Por favor, ingresa un nombre y un precio válido');
     return;
   }
 
-  products.push({
-    nombre: newProduct.name,
-    precio: newProduct.price,
-    stock: newProduct.stock,
-    disponible: newProduct.stock > 0
-  });
+  try {
+    const mutation = `
+      mutation ($nombre: String!, $precio: Float!, $stock: Int!) {
+        addProduct(nombre: $nombre, precio: $precio, stock: $stock) {
+          id
+          nombre
+          precio
+          stock
+          disponible
+        }
+      }
+    `;
 
-  // Resetear el formulario
-  newProduct.name = '';
-  newProduct.price = 0;
-  newProduct.stock = 0;
-};
+    const variables = {
+      nombre: newProduct.name,
+      precio: newProduct.price,
+      stock: newProduct.stock
+    };
+
+    await fetchGraphQL(mutation, variables);
+
+    // Recargar productos
+    await loadProducts();
+
+    // Resetear el formulario
+    newProduct.name = '';
+    newProduct.price = 0;
+    newProduct.stock = 0;
+  } catch (err) {
+    console.error('Error al añadir producto:', err);
+    alert('Error al añadir el producto');
+  }
+}
 
 // Eliminar un producto
-const removeProduct = (index) => {
-  if (confirm(`¿Estás seguro de que deseas eliminar ${products[index].nombre}?`)) {
-    products.splice(index, 1);
-  }
-};
+async function removeProduct(id) {
+  const productToRemove = products.value.find(p => p.id == id);
 
-// Incrementar stock
-const incrementStock = (index) => {
-  products[index].stock += 1;
+  if (confirm(`¿Estás seguro de que deseas eliminar ${productToRemove.nombre}?`)) {
+    try {
+      const mutation = `
+        mutation ($id: ID!) {
+          removeProduct(id: $id)
+        }
+      `;
 
-  // Actualizar disponibilidad si era falso
-  if (!products[index].disponible) {
-    products[index].disponible = true;
-  }
-};
+      const variables = { id };
 
-// Decrementar stock
-const decrementStock = (index) => {
-  if (products[index].stock > 0) {
-    products[index].stock -= 1;
+      await fetchGraphQL(mutation, variables);
 
-    // Actualizar disponibilidad si llega a cero
-    if (products[index].stock === 0) {
-      products[index].disponible = false;
+      // Recargar productos
+      await loadProducts();
+    } catch (err) {
+      console.error('Error al eliminar producto:', err);
+      alert('Error al eliminar el producto');
     }
   }
-};
+}
 
-// Observar cambios en el stock de cada producto
-products.forEach((product, index) => {
-  watch(
-      () => product.stock,
-      (newStock) => {
-        product.disponible = newStock > 0;
-        console.log(`Producto ${product.nombre}: Stock cambiado a ${newStock}, disponible: ${product.disponible}`);
+// Incrementar stock
+async function incrementStock(id) {
+  try {
+    const mutation = `
+      mutation ($id: ID!, $amount: Int!) {
+        updateStock(id: $id, amount: $amount) {
+          id
+          nombre
+          stock
+          disponible
+        }
       }
-  );
+    `;
+
+    const variables = { id, amount: 1 };
+
+    await fetchGraphQL(mutation, variables);
+
+    // Recargar productos
+    await loadProducts();
+  } catch (err) {
+    console.error('Error al incrementar stock:', err);
+    alert('Error al actualizar el stock');
+  }
+}
+
+// Decrementar stock
+async function decrementStock(id) {
+  try {
+    const mutation = `
+      mutation ($id: ID!, $amount: Int!) {
+        updateStock(id: $id, amount: $amount) {
+          id
+          nombre
+          stock
+          disponible
+        }
+      }
+    `;
+
+    const variables = { id, amount: -1 };
+
+    await fetchGraphQL(mutation, variables);
+
+    // Recargar productos
+    await loadProducts();
+  } catch (err) {
+    console.error('Error al decrementar stock:', err);
+    alert('Error al actualizar el stock');
+  }
+}
+
+// Cargar productos al montar el componente
+onMounted(() => {
+  loadProducts();
 });
 </script>
 
