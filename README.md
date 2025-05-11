@@ -1,132 +1,121 @@
-# Simulacion_de_inventario_reactivo
+Backend Flask con GraphQL para Inventario
+Este proyecto implementa un backend utilizando Flask y GraphQL para gestionar el inventario de productos de una tienda online, conectándose con un frontend desarrollado en Vue.
+Estructura del Proyecto
+/proyecto
+├── backend/
+│ ├── app.py # Aplicación Flask + GraphQL
+│ └── requirements.txt
+│
+└── frontend/
+├── src/
+│ ├── App.vue # Componente principal de Vue (modificado)
+│ └── main.js
+└── ...
+Características Implementadas
+Backend (Flask + GraphQL)
 
-## 1. Vue no detecta cambios dentro de objetos reactivos de la forma que esperarías. ¿Cómo podrías observar un cambio en una propiedad anidada?
+Base de datos en memoria con productos iniciales
+Esquema GraphQL con:
 
-En Vue, la reactividad tiene ciertas limitaciones cuando se trata de propiedades anidadas en objetos reactivos. Para observar cambios en propiedades anidadas, tenemos varias opciones:
+Consulta (Query) para obtener todos los productos
+Mutaciones (Mutations) para:
 
-1. **Usar una función de getter en el callback de watch**: Esta es la técnica utilizada en nuestra solución. Al usar una función que retorna la propiedad específica que queremos observar dentro del objeto reactivo:
+Actualizar el stock de un producto
+Añadir nuevos productos
+Eliminar productos existentes
 
-```javascript
-watch(
-  () => product.stock,
-  (newStock) => {
-    // Aquí detectamos el cambio específico
-  }
-);
-```
+Lógica de negocio:
 
-2. **Usar la opción 'deep' en watch**: Para observar todas las propiedades anidadas en un objeto, podemos usar la opción deep:
+Actualización automática del campo disponible basado en el stock
+Stock a 0 = producto no disponible
+Stock > 0 = producto disponible
 
-```javascript
-watch(
-  product,
-  (newValue) => {
-    // Reacciona a cualquier cambio en cualquier propiedad del objeto
-  },
-  { deep: true }
-);
-```
+Frontend (Vue)
 
-3. **Usar watch en rutas específicas**: También podemos especificar directamente la ruta a la propiedad anidada que queremos observar:
+Conexión con el backend mediante solicitudes GraphQL
+Actualización reactiva de la interfaz de usuario cuando cambian los datos
+Funcionalidades de:
 
-```javascript
-watch(
-  () => productos.value[0].stock,
-  (newValue) => {
-    // Reacciona a cambios específicos en el stock del primer producto
-  }
-);
-```
+Visualización de productos
+Adición de nuevos productos
+Incremento/decremento del stock
+Eliminación de productos
 
-## 2. watch() permite escuchar cambios en propiedades específicas dentro de reactive(), explica cómo funciona.
+Instalación y Ejecución
+Backend
 
-La función `watch()` en Vue 3 permite observar y reaccionar a cambios en fuentes de datos reactivas. Cuando se usa con objetos creados mediante `reactive()`, funciona de la siguiente manera:
+Navega a la carpeta backend:
+cd backend
 
-1. **Primer argumento (fuente)**: Puede ser una función getter que retorna el valor a observar, un objeto reactivo, una referencia (ref), o un array de estas opciones.
+Instala las dependencias:
+pip install -r requirements.txt
 
-2. **Segundo argumento (callback)**: Es una función que se ejecuta cuando la fuente observada cambia. Recibe dos parámetros: el nuevo valor y el valor anterior.
+Ejecuta la aplicación Flask:
+python app.py
+El servidor estará disponible en http://localhost:5000
 
-3. **Tercer argumento (opciones)**: Es un objeto opcional que puede incluir:
-   - `deep`: Para observar propiedades anidadas (default: false)
-   - `immediate`: Para ejecutar el callback inmediatamente al iniciar el watch (default: false)
-   - `flush`: Para controlar cuando se ejecuta el callback ('pre', 'post', o 'sync')
+Frontend
 
-Ejemplos de cómo funciona:
+Navega a la carpeta del frontend:
+cd frontend
 
-```javascript
-// Observando una propiedad específica
-watch(
-  () => product.stock,
-  (newStock, oldStock) => {
-    console.log(`Stock cambió de ${oldStock} a ${newStock}`);
-  }
-);
+Instala las dependencias:
+npm install
 
-// Observando el objeto completo (cambios superficiales)
-watch(product, (newValue, oldValue) => {
-  console.log("El producto cambió", newValue, oldValue);
-});
+Ejecuta el servidor de desarrollo:
+npm run dev
+El frontend estará disponible en http://localhost:5173 (o el puerto que Vue asigne)
 
-// Observando el objeto completo (cambios profundos)
-watch(
-  product,
-  (newValue, oldValue) => {
-    console.log("El producto o alguna propiedad anidada cambió");
-  },
-  { deep: true }
-);
-```
+Pruebas GraphQL
+Puedes acceder al GraphQL Playground para probar las consultas en:
+http://localhost:5000/graphql
+Consultas de ejemplo:
 
-## 3. ¿Cómo harías que un watch() detecte cambios en stock dentro de un array de productos?
-
-Para detectar cambios en la propiedad "stock" de cada producto dentro de un array de productos, hay varias técnicas:
-
-1. **Observar cada elemento individualmente** (método implementado en mi solución):
-
-```javascript
-products.forEach((product) => {
-  watch(
-    () => product.stock,
-    (newStock) => {
-      product.disponible = newStock > 0;
-    }
-  );
-});
-```
-
-2. **Usar un watch con deep para todo el array**:
-
-```javascript
-watch(
-  products,
-  () => {
-    // Actualizar disponibilidad para todos los productos
-    products.forEach((product) => {
-      product.disponible = product.stock > 0;
-    });
-  },
-  { deep: true }
-);
-```
-
-3. **Crear una función personalizada para observar una propiedad específica dentro de cada elemento del array**:
-
-```javascript
-function watchArrayProperty(array, propName, callback) {
-  array.forEach((item, index) => {
-    watch(
-      () => item[propName],
-      (newValue, oldValue) => {
-        callback(item, index, newValue, oldValue);
-      }
-    );
-  });
+Obtener todos los productos:
+graphqlquery {
+products {
+id
+nombre
+precio
+stock
+disponible
+}
 }
 
-// Uso
-watchArrayProperty(products, "stock", (product) => {
-  product.disponible = product.stock > 0;
-});
-```
+Actualizar el stock de un producto:
+graphqlmutation {
+updateStock(id: 1, amount: 5) {
+id
+nombre
+stock
+disponible
+}
+}
 
-La primera opción es generalmente la más eficiente para este caso específico, ya que solo reacciona cuando cambia la propiedad específica que nos interesa, mientras que la opción con `deep: true` reaccionaría a cualquier cambio en cualquier propiedad de cualquier producto.
+Añadir un nuevo producto:
+graphqlmutation {
+addProduct(
+nombre: "Nuevo Producto",
+precio: 299.99,
+stock: 15
+) {
+id
+nombre
+precio
+stock
+disponible
+}
+}
+
+Eliminar un producto:
+graphqlmutation {
+removeProduct(id: 4)
+}
+
+Implementación de la Lógica de Disponibilidad
+La lógica que actualiza el campo disponible basado en el stock se implementa en el backend dentro del resolver updateStock. Siguiendo los requisitos, un producto:
+
+Es no disponible cuando su stock es 0
+Es disponible cuando su stock es mayor que 0
+
+Esta lógica se aplica tanto al actualizar el stock como al crear nuevos productos
