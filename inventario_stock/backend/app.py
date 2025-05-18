@@ -1,13 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from ariadne import ObjectType, QueryType, MutationType, make_executable_schema, graphql_sync
-# Importación actualizada para versiones recientes de Ariadne
+
 from ariadne.explorer import ExplorerGraphiQL
 
 app = Flask(__name__)
-CORS(app)  # Habilitar CORS para conectar con el frontend Vue
+CORS(app)
 
-# Base de datos en memoria
+# Base de datos
 products = [
     {
         "id": 1,
@@ -74,12 +74,12 @@ def resolve_product(_, info, id):
 def resolve_update_stock(_, info, id, amount):
     for product in products:
         if product["id"] == int(id):
-            # Actualizar el stock
+
             product["stock"] += amount
 
-            # Aplicar la lógica de disponibilidad
+
             if product["stock"] <= 0:
-                product["stock"] = 0  # Asegurar que el stock no sea negativo
+                product["stock"] = 0
                 product["disponible"] = False
             else:
                 product["disponible"] = True
@@ -89,10 +89,9 @@ def resolve_update_stock(_, info, id, amount):
 
 @mutation.field("addProduct")
 def resolve_add_product(_, info, nombre, precio, stock):
-    # Generar un nuevo ID (simplemente el máximo ID actual + 1)
+
     new_id = max([p["id"] for p in products]) + 1 if products else 1
 
-    # Crear el nuevo producto
     new_product = {
         "id": new_id,
         "nombre": nombre,
@@ -101,7 +100,7 @@ def resolve_add_product(_, info, nombre, precio, stock):
         "disponible": stock > 0
     }
 
-    # Añadir a la lista
+
     products.append(new_product)
     return new_product
 
@@ -112,13 +111,10 @@ def resolve_remove_product(_, info, id):
     products = [p for p in products if p["id"] != int(id)]
     return len(products) < initial_length
 
-# Crear el esquema ejecutable
 schema = make_executable_schema(type_defs, query, mutation, product)
 
-# Ruta para GraphQL
 @app.route("/graphql", methods=["GET"])
 def graphql_playground():
-    # Playground para probar queries GraphQL en el navegador
     explorer = ExplorerGraphiQL(title="API GraphQL para Inventario")
     return explorer.html(None), 200
 

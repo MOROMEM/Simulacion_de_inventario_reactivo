@@ -65,14 +65,12 @@ const products = ref([]);
 const loading = ref(true);
 const error = ref(null);
 
-// Objeto para el nuevo producto
 const newProduct = reactive({
   name: '',
   price: 0,
   stock: 0
 });
 
-// Función para realizar consultas GraphQL
 async function fetchGraphQL(query, variables = {}) {
   try {
     const response = await fetch(GRAPHQL_URL, {
@@ -100,7 +98,6 @@ async function fetchGraphQL(query, variables = {}) {
   }
 }
 
-// Cargar productos al iniciar
 async function loadProducts() {
   loading.value = true;
   error.value = null;
@@ -128,7 +125,6 @@ async function loadProducts() {
   }
 }
 
-// Añadir un nuevo producto
 async function addProduct() {
   if (newProduct.name.trim() === '' || newProduct.price <= 0) {
     alert('Por favor, ingresa un nombre y un precio válido');
@@ -156,10 +152,9 @@ async function addProduct() {
 
     await fetchGraphQL(mutation, variables);
 
-    // Recargar productos
+
     await loadProducts();
 
-    // Resetear el formulario
     newProduct.name = '';
     newProduct.price = 0;
     newProduct.stock = 0;
@@ -169,7 +164,6 @@ async function addProduct() {
   }
 }
 
-// Eliminar un producto
 async function removeProduct(id) {
   const productToRemove = products.value.find(p => p.id == id);
 
@@ -185,7 +179,6 @@ async function removeProduct(id) {
 
       await fetchGraphQL(mutation, variables);
 
-      // Recargar productos
       await loadProducts();
     } catch (err) {
       console.error('Error al eliminar producto:', err);
@@ -194,7 +187,7 @@ async function removeProduct(id) {
   }
 }
 
-// Incrementar stock
+
 async function incrementStock(id) {
   try {
     const mutation = `
@@ -212,7 +205,7 @@ async function incrementStock(id) {
 
     await fetchGraphQL(mutation, variables);
 
-    // Recargar productos
+
     await loadProducts();
   } catch (err) {
     console.error('Error al incrementar stock:', err);
@@ -220,7 +213,7 @@ async function incrementStock(id) {
   }
 }
 
-// Decrementar stock
+
 async function decrementStock(id) {
   try {
     const mutation = `
@@ -238,7 +231,7 @@ async function decrementStock(id) {
 
     await fetchGraphQL(mutation, variables);
 
-    // Recargar productos
+
     await loadProducts();
   } catch (err) {
     console.error('Error al decrementar stock:', err);
@@ -246,7 +239,7 @@ async function decrementStock(id) {
   }
 }
 
-// Cargar productos al montar el componente
+
 onMounted(() => {
   loadProducts();
 });
