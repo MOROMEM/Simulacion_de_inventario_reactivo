@@ -1,4 +1,5 @@
 📦 GraphQL vs REST en APIs de Productos
+
 🧾 Introducción
 Este documento explica las ventajas de usar GraphQL sobre REST en el desarrollo de una API para manejar productos, junto con prácticas recomendadas para garantizar la coherencia de datos como stock y disponibilidad. También se describe cómo se definen los tipos y resolvers en una API GraphQL.
 
